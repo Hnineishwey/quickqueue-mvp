@@ -122,7 +122,7 @@ Deploy and test `firestore.rules` against the intended Firebase project before m
 
 ## Live Demo
 
-- **Live Application:** Coming soon
+- **Live Application:** https://quickqueuee.netlify.app/
 - **Hackathon Submission:** Coming soon
 
 ## Prototype Scope
