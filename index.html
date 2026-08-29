@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b5cab">
+  <title>QuickQueue</title>
+  <style>
+    :root {
+      --blue:#0b5cab; --blue-dark:#073f78; --teal:#0d9488; --teal-dark:#0f766e;
+      --ink:#102a43; --muted:#61758a; --line:#d7e4ef; --bg:#eef6fb;
+      --card:#fff; --danger:#c62828; --warning:#b45309; --success:#047857;
+      --shadow:0 12px 34px rgba(11,92,171,.11); --radius:18px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    [hidden] { display:none !important; }
+    html,body { min-height:100%; }
+    body {
+      font-family:"Segoe UI",system-ui,-apple-system,sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1000px 480px at 0 -10%,#d9f6f2 0,transparent 56%),
+        radial-gradient(850px 400px at 110% 0,#d2e8fa 0,transparent 52%),var(--bg);
+    }
+    button,input,select,textarea { font:inherit; }
+    button { -webkit-tap-highlight-color:transparent; }
+    .shell { width:min(1080px,100%); margin:auto; padding:16px 16px 96px; }
+    .center-shell { width:min(460px,100%); margin:auto; padding:22px 16px; }
+    .card {
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      padding:18px; box-shadow:0 7px 22px rgba(16,42,67,.055);
+    }
+    .auth-card { margin-top:18px; padding:22px; box-shadow:var(--shadow); }
+    .auth-tabs {
+      display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-top:16px;
+      padding:6px; border:1px solid var(--line); border-radius:15px; background:#f5fafc;
+    }
+    .auth-tabs button {
+      border:0; border-radius:10px; padding:9px 7px; background:transparent;
+      color:var(--muted); font-size:.77rem; font-weight:750; cursor:pointer;
+    }
+    .auth-tabs button.active { color:#fff; background:linear-gradient(135deg,var(--blue),var(--teal)); }
+    .brand-panel {
+      color:#fff; background:linear-gradient(135deg,var(--blue),#147b99 58%,var(--teal));
+      border-radius:22px; padding:22px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+    }
+    .brand-panel::after {
+      content:""; position:absolute; width:170px; height:170px; border-radius:50%;
+      right:-50px; top:-70px; background:rgba(255,255,255,.12);
+    }
+    .brand { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+    .logo {
+      width:46px; height:46px; border-radius:14px; display:grid; place-items:center;
+      background:rgba(255,255,255,.18); font-size:24px; flex:0 0 auto;
+    }
+    .brand h1 { font-size:1.3rem; letter-spacing:.2px; }
+    .brand p { font-size:.82rem; opacity:.9; margin-top:2px; }
+    h2 { font-size:1.18rem; margin-bottom:5px; }
+    h3 { font-size:1rem; }
+    .sub { color:var(--muted); font-size:.86rem; line-height:1.5; }
+    .field { display:block; font-size:.8rem; font-weight:700; margin:13px 0 6px; }
+    input,select,textarea {
+      width:100%; border:1.5px solid var(--line); border-radius:12px; padding:12px 13px;
+      color:var(--ink); background:#f9fcfe; outline:none;
+    }
+    textarea { min-height:100px; resize:vertical; }
+    input:focus,select:focus,textarea:focus {
+      border-color:var(--teal); background:#fff; box-shadow:0 0 0 3px rgba(13,148,136,.14);
+    }
+    .btn {
+      border:0; border-radius:12px; padding:12px 14px; font-weight:750; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:7px;
+      color:#fff; background:linear-gradient(135deg,var(--blue),var(--teal));
+      transition:transform .15s,opacity .15s; min-height:44px;
+    }
+    .btn:hover { opacity:.93; }
+    .btn:active { transform:scale(.98); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+    .btn.full { width:100%; margin-top:16px; }
+    .btn.secondary { color:var(--blue-dark); background:#fff; border:1.5px solid #c9dcea; }
+    .btn.ghost { color:var(--teal-dark); background:#e7f8f5; }
+    .btn.danger { background:linear-gradient(135deg,#e11d48,var(--danger)); }
+    .btn.warn { background:linear-gradient(135deg,#f59e0b,#c56a08); }
+    .btn.small { min-height:36px; padding:8px 11px; font-size:.8rem; }
+    .text-btn {
+      border:0; background:none; color:var(--blue); font-weight:700; cursor:pointer; padding:6px;
+    }
+    .form-message { min-height:20px; margin-top:10px; font-size:.82rem; color:var(--danger); }
+    .auth-switch { text-align:center; margin-top:14px; font-size:.86rem; color:var(--muted); }
+    .spinner {
+      width:25px; height:25px; border:3px solid #cfe2ee; border-top-color:var(--teal);
+      border-radius:50%; animation:spin .7s linear infinite;
+    }
+    .spinner.small { width:18px; height:18px; border-width:2px; border-color:#ffffff66; border-top-color:#fff; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
+    #loadingGate { min-height:100vh; display:grid; place-items:center; text-align:center; }
+    #loadingGate .spinner { margin:18px auto 10px; }
+    .app-header {
+      color:#fff; background:linear-gradient(135deg,var(--blue),#147b99 58%,var(--teal));
+      border-radius:22px; padding:16px 18px; box-shadow:var(--shadow);
+      display:flex; align-items:center; justify-content:space-between; gap:15px;
+    }
+    .app-header .brand p { display:none; }
+    .user-area { display:flex; align-items:center; justify-content:flex-end; gap:9px; min-width:0; }
+    .user-copy { min-width:0; text-align:right; }
+    .user-name { font-size:.88rem; font-weight:750; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .role-badge {
+      display:inline-block; margin-top:3px; border-radius:999px; padding:3px 8px;
+      background:rgba(255,255,255,.19); font-size:.69rem; font-weight:750; text-transform:capitalize;
+    }
+    .logout { border:1px solid rgba(255,255,255,.45); color:#fff; background:rgba(255,255,255,.12); }
+    .lang-btn {
+      border:1px solid rgba(255,255,255,.45); border-radius:10px; padding:7px 9px;
+      color:#fff; background:rgba(255,255,255,.12); font-size:.72rem; font-weight:750; cursor:pointer;
+    }
+    .brand-panel > .lang-btn { position:absolute; top:14px; right:14px; z-index:2; }
+    .view { animation:rise .25s ease; }
+    .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:22px 2px 12px; }
+    .back { width:auto; flex:0 0 auto; }
+    .category-grid { display:grid; gap:12px; margin-top:16px; }
+    .category-card {
+      min-height:132px; border:1px solid var(--line); border-radius:18px; padding:18px;
+      text-align:left; background:linear-gradient(145deg,#fff,#f2fbfc); color:var(--ink);
+      cursor:pointer; box-shadow:0 7px 20px rgba(16,42,67,.05);
+    }
+    .category-card:hover { border-color:#90cec7; transform:translateY(-1px); }
+    .category-icon { font-size:2rem; display:block; margin-bottom:12px; }
+    .category-card strong { display:block; font-size:1.03rem; }
+    .category-card span:last-child { color:var(--muted); font-size:.78rem; }
+    .shop-tabs {
+      display:flex; gap:8px; overflow-x:auto; padding:3px 2px 12px; margin-bottom:2px;
+      scrollbar-width:thin; -webkit-overflow-scrolling:touch;
+    }
+    .shop-tabs button {
+      flex:0 0 auto; border:1px solid var(--line); border-radius:999px; padding:9px 12px;
+      color:var(--muted); background:#fff; font-size:.78rem; font-weight:750; cursor:pointer;
+    }
+    .shop-tabs button .tab-count {
+      display:inline-grid; place-items:center; min-width:21px; height:21px; margin-left:5px;
+      border-radius:999px; background:#edf5fa; color:var(--blue-dark); font-size:.68rem;
+    }
+    .shop-tabs button.active {
+      color:#fff; border-color:transparent; background:linear-gradient(135deg,var(--blue),var(--teal));
+    }
+    .shop-tabs button.active .tab-count { color:var(--blue-dark); background:#fff; }
+    .list { display:grid; gap:11px; }
+    .shop-card {
+      border:1px solid var(--line); background:#fff; border-radius:16px; padding:16px;
+      box-shadow:0 6px 18px rgba(16,42,67,.04);
+    }
+    .shop-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+    .pill {
+      display:inline-block; border-radius:999px; padding:5px 9px; background:#e6f6ff;
+      color:var(--blue-dark); font-size:.71rem; font-weight:750; text-transform:capitalize;
+    }
+    .pill.serving { color:var(--success); background:#dff8ef; }
+    .pill.waiting { color:#9a5900; background:#fff2d7; }
+    .pill.skipped,.pill.cancelled { color:#8f3d16; background:#ffeadf; }
+    .pill.completed { color:var(--success); background:#dff8ef; }
+    .meta { color:var(--muted); font-size:.8rem; line-height:1.55; margin-top:8px; }
+    .service-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .tag { border-radius:999px; padding:4px 8px; background:#edf7fa; color:#315f70; font-size:.7rem; }
+    .shop-card .btn { margin-top:13px; width:100%; }
+    .empty { text-align:center; color:var(--muted); padding:34px 15px; }
+    .empty-icon { font-size:2.2rem; display:block; margin-bottom:8px; }
+    .loading-row { display:flex; align-items:center; justify-content:center; gap:10px; color:var(--muted); padding:30px; }
+    .detail-hero {
+      background:linear-gradient(145deg,#fff,#edfaf9); border:1px solid #cde8e5;
+      border-radius:18px; padding:19px; margin-bottom:13px;
+    }
+    .detail-hero h2 { color:var(--blue-dark); }
+    .live-grid,.stats { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:13px; }
+    .stat {
+      border-radius:13px; background:#f3f9fc; padding:13px 9px; text-align:center;
+    }
+    .stat b { display:block; color:var(--teal-dark); font-size:1.23rem; }
+    .stat span { color:var(--muted); font-size:.72rem; }
+    .section-card { margin-top:13px; }
+    .queue-ticket {
+      text-align:center; border:1px dashed #8bcfc7; background:linear-gradient(#effbf9,#fff);
+      border-radius:18px; padding:22px; margin-top:14px;
+    }
+    .ticket-num { color:var(--blue); font-size:2.5rem; line-height:1.15; font-weight:850; letter-spacing:1px; margin:8px 0; }
+    .success-mark {
+      width:64px; height:64px; border-radius:50%; display:grid; place-items:center; margin:0 auto 12px;
+      background:#dff8ef; color:var(--success); font-size:2rem;
+    }
+    .bottom-nav {
+      position:fixed; z-index:20; bottom:0; left:50%; transform:translateX(-50%);
+      width:min(600px,100%); display:grid; grid-template-columns:1fr 1fr;
+      background:rgba(255,255,255,.97); border-top:1px solid var(--line);
+      padding:8px 8px calc(8px + env(safe-area-inset-bottom)); backdrop-filter:blur(10px);
+    }
+    .bottom-nav button {
+      border:0; background:none; color:var(--muted); font-weight:750; padding:8px; cursor:pointer;
+      display:flex; flex-direction:column; align-items:center; gap:3px; font-size:.73rem;
+    }
+    .bottom-nav button.active { color:var(--blue); }
+    .nav-icon { font-size:1.18rem; }
+    .two-col { display:grid; gap:13px; }
+    .dashboard-kpis { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0 13px; }
+    .kpi { text-align:center; background:#fff; border:1px solid var(--line); border-radius:15px; padding:14px; }
+    .kpi b { display:block; color:var(--blue); font-size:1.45rem; }
+    .kpi span { color:var(--muted); font-size:.74rem; }
+    .ticket-row {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px; border:1px solid var(--line); border-radius:13px; background:#fbfdff;
+    }
+    .ticket-row + .ticket-row { margin-top:8px; }
+    .ticket-row strong { color:var(--blue); }
+    .info-grid { display:grid; gap:8px; margin-top:13px; }
+    .info-line { padding:10px 12px; border-radius:11px; background:#f5fafc; font-size:.83rem; }
+    .info-line b { display:block; color:var(--muted); font-size:.69rem; text-transform:uppercase; margin-bottom:2px; }
+    .status-card { max-width:680px; margin:22px auto 0; text-align:center; padding:26px; }
+    .status-icon {
+      width:68px; height:68px; border-radius:22px; display:grid; place-items:center;
+      margin:0 auto 14px; font-size:2rem; background:linear-gradient(145deg,#e3f5ff,#dff8ef);
+    }
+    .status-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:9px; margin-top:17px; }
+    .invite-code {
+      display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;
+      border:1px dashed #79bdb5; border-radius:12px; padding:10px 12px; background:#effbf9;
+    }
+    .invite-code code { color:var(--teal-dark); font-size:1rem; font-weight:850; letter-spacing:1px; }
+    .staff-section { margin-top:14px; }
+    .wide-actions { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; }
+    .application-card { border-left:4px solid var(--teal); }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .actions .btn { width:100%; }
+    .toast-wrap {
+      position:fixed; top:12px; left:50%; transform:translateX(-50%); width:min(520px,calc(100% - 24px));
+      display:grid; gap:8px; z-index:60; pointer-events:none;
+    }
+    .toast { color:#fff; padding:12px 14px; border-radius:12px; box-shadow:0 10px 26px #0003; animation:rise .2s ease; }
+    .toast.ok { background:var(--success); }
+    .toast.err { background:#b91c1c; }
+    .overlay {
+      position:fixed; inset:0; z-index:50; display:none; align-items:flex-end; justify-content:center;
+      padding:16px; background:rgba(16,42,67,.48);
+    }
+    .overlay.show { display:flex; }
+    .modal { width:min(440px,100%); background:#fff; border-radius:19px; padding:19px; margin-bottom:16px; }
+    .modal p { color:var(--muted); font-size:.87rem; margin-top:7px; line-height:1.5; }
+    .modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:15px; }
+    @media (min-width:720px) {
+      .shell { padding-top:24px; }
+      .app-header .brand p { display:block; }
+      .category-grid { grid-template-columns:repeat(3,1fr); }
+      .two-col { grid-template-columns:minmax(300px,.8fr) minmax(350px,1.2fr); align-items:start; }
+      .shop-list-grid { grid-template-columns:repeat(2,1fr); }
+      .overlay { align-items:center; }
+      .modal { margin:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+  <section id="loadingGate">
+    <div>
+      <div class="logo" style="margin:auto;background:linear-gradient(135deg,var(--blue),var(--teal));color:white">◉</div>
+      <h2 style="margin-top:12px">QuickQueue</h2>
+      <div class="spinner" aria-label="Loading"></div>
+      <p class="sub">Checking your account · အကောင့်စစ်ဆေးနေသည်</p>
+    </div>
+  </section>
+
+  <main id="authShell" class="center-shell" hidden>
+    <div class="brand-panel">
+      <button class="lang-btn" type="button" data-language-toggle>မြန်မာ</button>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">◉</div>
+        <div><h1>QuickQueue</h1><p>Less waiting, more living · စောင့်ချိန်လျှော့ချပါ</p></div>
+      </div>
+    </div>
+
+    <div class="auth-tabs" id="authTabs" aria-label="Account options">
+      <button class="active" type="button" data-auth-view="loginView">Login</button>
+      <button type="button" data-auth-view="customerSignupView">Customer</button>
+      <button type="button" data-auth-view="ownerSignupView">Owner</button>
+      <button type="button" data-auth-view="staffSignupView">Staff</button>
+    </div>
+
+    <section id="loginView" class="card auth-card">
+      <h2>Welcome back · ပြန်လည်ကြိုဆိုပါသည်</h2>
+      <p class="sub">Sign in to manage your queues in real time.</p>
+      <form id="loginForm" novalidate>
+        <label class="field" for="loginEmail">Email · အီးမေးလ်</label>
+        <input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com">
+        <label class="field" for="loginPassword">Password · စကားဝှက်</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••">
+        <button class="btn full" id="loginBtn" type="submit">Login · ဝင်မည်</button>
+        <p class="form-message" id="loginMessage" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="customerSignupView" class="card auth-card" hidden>
+      <h2>Customer Signup · ဖောက်သည်အကောင့်</h2>
+      <p class="sub">Create an account to join live queues.</p>
+      <form id="customerSignupForm" novalidate>
+        <label class="field" for="customerSignupName">Name · အမည်</label>
+        <input id="customerSignupName" type="text" autocomplete="name" maxlength="60" required>
+        <label class="field" for="customerSignupEmail">Email · အီးမေးလ်</label>
+        <input id="customerSignupEmail" type="email" autocomplete="email" required>
+        <label class="field" for="customerSignupPassword">Password · စကားဝှက်</label>
+        <input id="customerSignupPassword" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field" for="customerSignupConfirm">Confirm password</label>
+        <input id="customerSignupConfirm" type="password" autocomplete="new-password" minlength="6" required>
+        <button class="btn full" id="customerSignupBtn" type="submit">Create Customer Account</button>
+        <p class="form-message" id="customerSignupMessage" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="ownerSignupView" class="card auth-card" hidden>
+      <h2>Business Owner Signup</h2>
+      <p class="sub">Submit your business for platform admin approval.</p>
+      <form id="ownerSignupForm" novalidate>
+        <label class="field" for="ownerSignupName">Owner name</label>
+        <input id="ownerSignupName" type="text" autocomplete="name" maxlength="60" required>
+        <label class="field" for="ownerSignupEmail">Email</label>
+        <input id="ownerSignupEmail" type="email" autocomplete="email" required>
+        <label class="field" for="ownerSignupPassword">Password</label>
+        <input id="ownerSignupPassword" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field" for="ownerSignupConfirm">Confirm password</label>
+        <input id="ownerSignupConfirm" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field" for="ownerPhone">Phone</label>
+        <input id="ownerPhone" type="tel" autocomplete="tel" maxlength="30" required>
+        <label class="field" for="proposedBusinessName">Proposed business name</label>
+        <input id="proposedBusinessName" type="text" maxlength="90" required>
+        <label class="field" for="proposedCategory">Category</label>
+        <select id="proposedCategory" required>
+          <option value="clinic" data-i18n="clinic">Clinic</option><option value="restaurant" data-i18n="restaurant">Restaurant</option><option value="salon" data-i18n="salon">Hair Salon</option>
+          <option value="other" data-i18n="other">Other</option>
+        </select>
+        <div id="proposedCustomCategoryWrap" hidden>
+          <label class="field" for="proposedCustomCategory" data-i18n="customCategoryName">Custom category name</label>
+          <input id="proposedCustomCategory" type="text" minlength="2" maxlength="50" data-i18n-placeholder="customPlaceholder" placeholder="Example: Car Repair Shop">
+          <p class="sub" data-i18n="enterBusinessCategory">Enter your business category</p>
+        </div>
+        <label class="field" for="proposedAddress">Business address</label>
+        <input id="proposedAddress" type="text" maxlength="160" required>
+        <label class="field" for="businessDescription">Business description</label>
+        <textarea id="businessDescription" maxlength="600" required></textarea>
+        <button class="btn full" id="ownerSignupBtn" type="submit">Submit Owner Application</button>
+        <p class="form-message" id="ownerSignupMessage" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="staffSignupView" class="card auth-card" hidden>
+      <h2>Staff Signup · ဝန်ထမ်းအကောင့်</h2>
+      <p class="sub">Use an active invite code from the shop owner.</p>
+      <form id="staffSignupForm" novalidate>
+        <label class="field" for="staffSignupName">Staff name</label>
+        <input id="staffSignupName" type="text" autocomplete="name" maxlength="60" required>
+        <label class="field" for="staffSignupEmail">Email</label>
+        <input id="staffSignupEmail" type="email" autocomplete="email" required>
+        <label class="field" for="staffSignupPassword">Password</label>
+        <input id="staffSignupPassword" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field" for="staffSignupConfirm">Confirm password</label>
+        <input id="staffSignupConfirm" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field" for="staffInviteCode">Shop invite code</label>
+        <input id="staffInviteCode" type="text" maxlength="20" required placeholder="QQ-A7B9K2" style="text-transform:uppercase">
+        <button class="btn full" id="staffSignupBtn" type="submit">Request Staff Access</button>
+        <p class="form-message" id="staffSignupMessage" role="alert"></p>
+      </form>
+    </section>
+  </main>
+
+  <main id="appShell" class="shell" hidden>
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">◉</div>
+        <div><h1>QuickQueue</h1><p>Real-time queue · အချိန်နှင့်တပြေးညီ</p></div>
+      </div>
+      <div class="user-area">
+        <button class="lang-btn" type="button" data-language-toggle>မြန်မာ</button>
+        <div class="user-copy">
+          <div class="user-name" id="headerUserName">—</div>
+          <span class="role-badge" id="headerRole">—</span>
+        </div>
+        <button class="btn small logout" id="logoutBtn" type="button" aria-label="Logout">Logout</button>
+      </div>
+    </header>
+
+    <div id="customerArea" hidden>
+      <section class="view" id="customerHomeView">
+        <div class="page-head"><div><h2>Where are you going?</h2><p class="sub">Choose a category · အမျိုးအစားရွေးပါ</p></div></div>
+        <div class="category-grid">
+          <button class="category-card" type="button" data-category="clinic">
+            <span class="category-icon" aria-hidden="true">🏥</span><strong>Clinics</strong><span>ဆေးခန်းများ</span>
+          </button>
+          <button class="category-card" type="button" data-category="restaurant">
+            <span class="category-icon" aria-hidden="true">🍽️</span><strong>Restaurants</strong><span>စားသောက်ဆိုင်များ</span>
+          </button>
+          <button class="category-card" type="button" data-category="salon">
+            <span class="category-icon" aria-hidden="true">✂️</span><strong>Hair Salons</strong><span>ဆံပင်ညှပ်ဆိုင်များ</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="view" id="shopListView" hidden>
+        <div class="page-head">
+          <div><h2 id="categoryTitle">All Shops</h2><p class="sub">Live availability · ဆိုင်များ</p></div>
+        </div>
+        <div class="shop-tabs" id="shopCategoryTabs" aria-label="Shop categories">
+          <button class="active" type="button" data-category="all"><span data-i18n="allShops">All Shops</span> <span class="tab-count" id="allShopCount">0</span></button>
+          <button type="button" data-category="clinic"><span data-i18n="clinics">Clinics</span> <span class="tab-count" id="clinicShopCount">0</span></button>
+          <button type="button" data-category="salon"><span data-i18n="hairSalons">Hair Salons</span> <span class="tab-count" id="salonShopCount">0</span></button>
+          <button type="button" data-category="restaurant"><span data-i18n="restaurants">Restaurants</span> <span class="tab-count" id="restaurantShopCount">0</span></button>
+          <button type="button" data-category="other"><span data-i18n="otherServices">Other Services</span> <span class="tab-count" id="otherShopCount">0</span></button>
+        </div>
+        <div class="list shop-list-grid" id="shopList"></div>
+      </section>
+
+      <section class="view" id="shopDetailView" hidden>
+        <div class="page-head">
+          <button class="btn secondary small back" id="shopBackBtn" type="button">← Shops · ဆိုင်များ</button>
+        </div>
+        <div id="customerShopDetail"></div>
+        <div class="card section-card">
+          <h2>Join Queue · တန်းစီဝင်ရန်</h2>
+          <p class="sub">One active ticket per shop.</p>
+          <form id="joinQueueForm">
+            <label class="field" for="queueName">Customer name · အမည်</label>
+            <input id="queueName" type="text" maxlength="60" required autocomplete="name">
+            <label class="field" for="queueService">Service · ဝန်ဆောင်မှု</label>
+            <select id="queueService" required></select>
+            <button class="btn full" id="joinQueueBtn" type="submit">Join Queue · တန်းစီဝင်မည်</button>
+            <p class="form-message" id="joinQueueMessage" role="alert"></p>
+            <button class="btn ghost full" id="viewExistingTicketBtn" type="button" hidden>View My Ticket · လက်မှတ်ကြည့်မည်</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="view" id="myQueueView" hidden>
+        <div class="page-head"><div><h2>My Queue Status</h2><p class="sub">ကျွန်ုပ်၏ တန်းစီအခြေအနေ</p></div></div>
+        <div id="myQueueContent"></div>
+      </section>
+    </div>
+
+    <section id="roleStatusArea" class="view" hidden>
+      <div class="card status-card">
+        <div class="status-icon" id="roleStatusIcon">◷</div>
+        <h2 id="roleStatusTitle">Application status</h2>
+        <p class="sub" id="roleStatusText"></p>
+        <div class="info-grid" id="roleStatusDetails"></div>
+        <div class="status-actions">
+          <button class="btn ghost" id="refreshStatusBtn" type="button">Refresh Status · ပြန်စစ်မည်</button>
+          <button class="btn secondary" id="statusLogoutBtn" type="button">Logout · ထွက်မည်</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminArea" class="view" hidden>
+      <div class="page-head">
+        <div><h2>Admin Dashboard · စီမံခန့်ခွဲသူ</h2><p class="sub">Review business owner applications in real time.</p></div>
+        <span class="pill waiting"><b id="pendingOwnerCount">0</b> pending</span>
+      </div>
+      <div class="list" id="pendingOwnerList"></div>
+    </section>
+
+    <div id="ownerArea" hidden>
+      <section class="view" id="ownerHomeView">
+        <div class="page-head"><div><h2>Owner Dashboard · ဆိုင်ရှင်</h2><p class="sub">Create shops, invites, and manage your team.</p></div></div>
+        <div class="two-col">
+          <div class="card">
+            <h2>Create a shop · ဆိုင်အသစ်ဖွင့်ရန်</h2>
+            <form id="createShopForm">
+              <label class="field" for="shopName">Shop name</label>
+              <input id="shopName" type="text" maxlength="80" required>
+              <label class="field" for="shopCategory">Category</label>
+              <select id="shopCategory" required>
+                <option value="clinic" data-i18n="clinic">Clinic</option>
+                <option value="restaurant" data-i18n="restaurant">Restaurant</option>
+                <option value="salon" data-i18n="salon">Hair Salon</option>
+                <option value="other" data-i18n="other">Other</option>
+              </select>
+              <div id="shopCustomCategoryWrap" hidden>
+                <label class="field" for="shopCustomCategory" data-i18n="customCategoryName">Custom category name</label>
+                <input id="shopCustomCategory" type="text" minlength="2" maxlength="50" data-i18n-placeholder="customPlaceholder" placeholder="Example: Car Repair Shop">
+                <p class="sub" data-i18n="enterBusinessCategory">Enter your business category</p>
+              </div>
+              <label class="field" for="shopAddress">Address</label>
+              <input id="shopAddress" type="text" maxlength="140" required>
+              <label class="field" for="shopHours">Opening hours</label>
+              <input id="shopHours" type="text" maxlength="80" required placeholder="9:00 AM – 6:00 PM">
+              <label class="field" for="shopMinutes">Minutes per customer</label>
+              <input id="shopMinutes" type="number" min="1" max="240" required value="10">
+              <label class="field" for="shopServices">Services (comma-separated)</label>
+              <input id="shopServices" type="text" maxlength="300" required placeholder="Consultation, Dental Check">
+              <button class="btn full" id="createShopBtn" type="submit">Create Shop · ဆိုင်ဖွင့်မည်</button>
+              <p class="form-message" id="createShopMessage" role="alert"></p>
+            </form>
+          </div>
+          <div>
+            <h2 style="margin-bottom:10px">My shops · ကျွန်ုပ်၏ဆိုင်များ</h2>
+            <div class="list" id="ownedShopList"></div>
+          </div>
+        </div>
+        <div class="two-col staff-section">
+          <div class="card">
+            <h2>Pending staff requests</h2>
+            <p class="sub">Requests for your shops only.</p>
+            <div id="pendingStaffList"></div>
+          </div>
+          <div class="card">
+            <h2>Approved staff</h2>
+            <p class="sub">Team members with current access.</p>
+            <div id="approvedStaffList"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="managementArea" hidden>
+      <section class="view" id="staffShopView" hidden>
+        <div class="page-head">
+          <button class="btn secondary small back" id="staffShopBackBtn" type="button">← Dashboard</button>
+          <span class="pill" id="staffShopCategory">Shop</span>
+        </div>
+        <div id="staffShopHeader"></div>
+        <div class="dashboard-kpis">
+          <div class="kpi"><b id="staffWaitingCount">0</b><span>Waiting · စောင့်ဆိုင်း</span></div>
+          <div class="kpi"><b id="staffServingCount">0</b><span>Serving · ခေါ်နေသည်</span></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <h2>Now serving · လက်ရှိခေါ်နေသည်</h2>
+            <div id="staffCurrentTicket" class="empty">No customer is being served.</div>
+            <div class="actions">
+              <button class="btn" id="callNextBtn" type="button">Call Next · ခေါ်မည်</button>
+              <button class="btn ghost" id="completeBtn" type="button">Complete · ပြီးဆုံး</button>
+              <button class="btn warn" id="skipBtn" type="button">Skip · ကျော်မည်</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Waiting customers · စောင့်နေသူများ</h2>
+            <div id="staffWaitingList" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <nav class="bottom-nav" id="customerNav" aria-label="Customer navigation" hidden>
+    <button id="navHomeBtn" class="active" type="button"><span class="nav-icon">⌂</span>Home · ပင်မ</button>
+    <button id="navQueueBtn" type="button"><span class="nav-icon">◷</span>My Queue · တန်းစီ</button>
+  </nav>
+
+  <div class="overlay" id="confirmOverlay" role="presentation">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <h3 id="confirmTitle">Confirm</h3>
+      <p id="confirmText"></p>
+      <div class="modal-actions">
+        <button class="btn secondary" id="confirmNoBtn" type="button">No · မလုပ်ပါ</button>
+        <button class="btn danger" id="confirmYesBtn" type="button">Yes · လုပ်မည်</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+      signOut, onAuthStateChanged, deleteUser
+    } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, collection,
+      query, where, onSnapshot, getDocs, serverTimestamp, writeBatch
+    } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyASBj4qCAKpPZCKqL0VEJ37eDQjibysDes",
+      authDomain: "qqmvp-39977.firebaseapp.com",
+      projectId: "qqmvp-39977",
+      storageBucket: "qqmvp-39977.firebasestorage.app",
+      messagingSenderId: "431248173415",
+      appId: "1:431248173415:web:91dccdfe13327c2b8e27c2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const $ = (id) => document.getElementById(id);
+    const translations = {
+      en: {
+        allShops:"All Shops", clinics:"Clinics", hairSalons:"Hair Salons", restaurants:"Restaurants",
+        clinic:"Clinic", restaurant:"Restaurant", salon:"Hair Salon", other:"Other",
+        otherServices:"Other Services", customCategoryName:"Custom category name",
+        enterBusinessCategory:"Enter your business category",
+        noOtherServices:"No other services available yet.",
+        customCategoryRequired:"Custom category is required.",
+        customPlaceholder:"Example: Car Repair Shop"
+      },
+      my: {
+        allShops:"ဆိုင်များအားလုံး", clinics:"ဆေးခန်းများ", hairSalons:"ဆံပင်ညှပ်ဆိုင်များ", restaurants:"စားသောက်ဆိုင်များ",
+        clinic:"ဆေးခန်း", restaurant:"စားသောက်ဆိုင်", salon:"ဆံပင်ညှပ်ဆိုင်", other:"အခြား",
+        otherServices:"အခြားဝန်ဆောင်မှုများ", customCategoryName:"စိတ်ကြိုက် အမျိုးအစားအမည်",
+        enterBusinessCategory:"သင့်လုပ်ငန်းအမျိုးအစားကို ထည့်သွင်းပါ",
+        noOtherServices:"အခြားဝန်ဆောင်မှုများ မရှိသေးပါ။",
+        customCategoryRequired:"စိတ်ကြိုက် အမျိုးအစား လိုအပ်ပါသည်။",
+        customPlaceholder:"ဥပမာ - ကားပြင်ဆိုင်"
+      }
+    };
+    let currentLanguage = "en";
+    const t = (key) => translations[currentLanguage][key] || translations.en[key] || key;
+
+    const state = {
+      user: null, profile: null, selectedCategory: "all", shops: [], customerShop: null, customerShopTickets: [],
+      staffShop: null, staffTickets: [], myTicket: null, myTicketShop: null, myShopTickets: [],
+      ownerShops: new Map(), pendingOwners: [], pendingStaff: [], approvedStaff: [], profileTimer: null, queueBusy:false, unsubs: {}
+    };
+    let confirmAction = null;
+
+    function applyTranslations() {
+      document.documentElement.lang = currentLanguage === "my" ? "my" : "en";
+      document.querySelectorAll("[data-i18n]").forEach((element) => {
+        element.textContent = t(element.dataset.i18n);
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+        element.placeholder = t(element.dataset.i18nPlaceholder);
+      });
+      document.querySelectorAll("[data-language-toggle]").forEach((button) => {
+        button.textContent = currentLanguage === "en" ? "မြန်မာ" : "English";
+      });
+      if (state.profile?.role === "user") {
+        if (!$("shopListView").hidden) renderShopList();
+        if (state.customerShop && !$("shopDetailView").hidden) renderCustomerShop(state.customerShop);
+      }
+      if (state.profile?.role === "admin") renderPendingOwners(state.pendingOwners);
+      if (state.profile?.role === "owner" && state.ownerShops.size) {
+        $("ownedShopList").innerHTML = [...state.ownerShops.values()].map((shop) => ownerShopCardHtml(shop.id, shop)).join("");
+      }
+      if (state.staffShop && !$("managementArea").hidden) {
+        $("staffShopCategory").textContent = categoryLabel(state.staffShop.category, state.staffShop.customCategory);
+      }
+      if (!$("roleStatus").hidden && state.profile) showRoleStatus(state.profile.role);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function categoryLabel(category, customCategory = "") {
+      if (category === "other") return customCategory.trim() || t("other");
+      return ["clinic","restaurant","salon"].includes(category) ? t(category) : "Shop";
+    }
+
+    function categoryPlural(category) {
+      return ({ clinic:t("clinics"), restaurant:t("restaurants"), salon:t("hairSalons"), other:t("otherServices") })[category] || t("allShops");
+    }
+
+    function timestampMs(value) {
+      return value && typeof value.toMillis === "function" ? value.toMillis() : 0;
+    }
+
+    function friendlyError(error) {
+      const code = error?.code || "";
+      const messages = {
+        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/invalid-email": "Please enter a valid email address.",
+        "auth/email-already-in-use": "An account already uses this email.",
+        "auth/weak-password": "Password must contain at least 6 characters.",
+        "auth/too-many-requests": "Too many attempts. Please try again later.",
+        "auth/network-request-failed": "Network error. Check your connection.",
+        "auth/api-key-not-valid": "Firebase rejected the configured API key. Check the Firebase project settings.",
+        "auth/api-key-not-valid.-please-pass-a-valid-api-key.": "Firebase rejected the configured API key. Check the Firebase project settings.",
+        "permission-denied": "You do not have permission to do that.",
+        "firestore/permission-denied": "You do not have permission to do that.",
+        "failed-precondition": "A Firestore index or setup step is required."
+      };
+      const message = messages[code] || error?.message?.replace(/^Firebase:\s*/,"") || "Something went wrong. Please try again.";
+      return code ? `${message} (${code})` : message;
+    }
+
+    function toast(message, type = "ok") {
+      const item = document.createElement("div");
+      item.className = `toast ${type === "err" ? "err" : "ok"}`;
+      item.textContent = message;
+      $("toasts").appendChild(item);
+      setTimeout(() => item.remove(), 3200);
+    }
+
+    function setBusy(button, busy, label) {
+      button.disabled = busy;
+      if (busy) {
+        button.dataset.label = button.textContent;
+        button.innerHTML = '<span class="spinner small" aria-hidden="true"></span> Loading…';
+      } else {
+        button.textContent = label || button.dataset.label || "Submit";
+      }
+    }
+
+    function showConfirm(title, text, action) {
+      confirmAction = action;
+      $("confirmTitle").textContent = title;
+      $("confirmText").textContent = text;
+      $("confirmOverlay").classList.add("show");
+      $("confirmYesBtn").focus();
+    }
+
+    function hideConfirm() {
+      confirmAction = null;
+      $("confirmOverlay").classList.remove("show");
+    }
+
+    function stopListener(name) {
+      if (typeof state.unsubs[name] === "function") state.unsubs[name]();
+      delete state.unsubs[name];
+    }
+
+    function stopAllDataListeners(except = "") {
+      Object.keys(state.unsubs).filter((name) => name !== except).forEach(stopListener);
+    }
+
+    function showOnly(ids, activeId) {
+      ids.forEach((id) => { $(id).hidden = id !== activeId; });
+    }
+
+    function showAuth(viewId = "loginView") {
+      $("loadingGate").hidden = true;
+      $("appShell").hidden = true;
+      $("customerNav").hidden = true;
+      $("authShell").hidden = false;
+      const views = ["loginView","customerSignupView","ownerSignupView","staffSignupView"];
+      showOnly(views, viewId);
+      document.querySelectorAll("[data-auth-view]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.authView === viewId);
+      });
+      ["loginMessage","customerSignupMessage","ownerSignupMessage","staffSignupMessage"]
+        .forEach((id) => { $(id).textContent = ""; });
+    }
+
+    function showCustomerView(viewId) {
+      showOnly(["customerHomeView","shopListView","shopDetailView","myQueueView"], viewId);
+      const queueActive = viewId === "myQueueView";
+      $("navHomeBtn").classList.toggle("active", !queueActive);
+      $("navQueueBtn").classList.toggle("active", queueActive);
+      if (viewId !== "shopDetailView") {
+        stopListener("customerShop");
+        stopListener("customerShopTickets");
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showManagementView(viewId) {
+      $("ownerHomeView").hidden = viewId !== "ownerHomeView";
+      $("staffShopView").hidden = viewId !== "staffShopView";
+      if (viewId !== "staffShopView") stopListener("staffTickets");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function hideRoleAreas() {
+      ["customerArea","adminArea","ownerArea","managementArea","roleStatusArea"]
+        .forEach((id) => { $(id).hidden = true; });
+      $("customerNav").hidden = true;
+    }
+
+    function routeRole() {
+      stopAllDataListeners("profile");
+      $("loadingGate").hidden = true;
+      $("authShell").hidden = true;
+      $("appShell").hidden = false;
+      $("headerUserName").textContent = state.profile.name || state.user.email;
+      const role = String(state.profile.role || "");
+      $("headerRole").textContent = role.replaceAll("_", " ");
+      hideRoleAreas();
+      if (role === "user") {
+        $("customerArea").hidden = false;
+        $("customerNav").hidden = false;
+        $("queueName").value = state.profile.name || "";
+        state.selectedCategory = "all";
+        showCustomerView("shopListView");
+        listenToAllShops();
+        listenToMyTickets();
+      } else if (role === "admin") {
+        $("adminArea").hidden = false;
+        listenToPendingOwners();
+      } else if (role === "owner") {
+        $("ownerArea").hidden = false;
+        $("managementArea").hidden = false;
+        showManagementView("ownerHomeView");
+        listenToOwnedShops();
+        listenToOwnerPeople();
+      } else if (role === "staff") {
+        $("managementArea").hidden = false;
+        $("staffShopBackBtn").hidden = true;
+        if (state.profile.shopId) openStaffShop(state.profile.shopId);
+        else {
+          $("managementArea").hidden = true;
+          $("roleStatusArea").hidden = false;
+          showRoleStatus("staff_removed");
+        }
+      } else {
+        $("roleStatusArea").hidden = false;
+        showRoleStatus(role);
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (state.profileTimer) clearTimeout(state.profileTimer);
+      stopAllDataListeners();
+      state.user = user;
+      state.profile = null;
+      state.customerShop = null;
+      state.staffShop = null;
+      state.myTicket = null;
+      state.myTicketShop = null;
+      state.myShopTickets = [];
+      if (!user) {
+        showAuth("loginView");
+        return;
+      }
+      $("loadingGate").hidden = false;
+      $("authShell").hidden = true;
+      $("appShell").hidden = true;
+      state.profileTimer = setTimeout(async () => {
+        if (!state.profile) {
+          toast("Account profile is missing. Please sign up again.", "err");
+          await signOut(auth).catch(() => {});
+        }
+      }, 5000);
+      state.unsubs.profile = onSnapshot(doc(db, "users", user.uid), (snapshot) => {
+        if (!snapshot.exists()) return;
+        clearTimeout(state.profileTimer);
+        const previous = state.profile;
+        const next = snapshot.data();
+        state.profile = next;
+        const roleChanged = !previous || previous.role !== next.role;
+        const ticketReferenceChanged = previous &&
+          (previous.activeShopId !== next.activeShopId || previous.activeTicketId !== next.activeTicketId);
+        if (roleChanged) routeRole();
+        else {
+          $("headerUserName").textContent = next.name || state.user.email;
+          if (next.role === "user" && ticketReferenceChanged) listenToMyTickets();
+        }
+      }, async (error) => {
+        clearTimeout(state.profileTimer);
+        toast(friendlyError(error), "err");
+        await signOut(auth).catch(() => {});
+      });
+    });
+
+    $("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = $("loginEmail").value.trim();
+      const password = $("loginPassword").value;
+      const message = $("loginMessage");
+      message.textContent = "";
+      if (!email || !password) {
+        message.textContent = "Enter your email and password.";
+        return;
+      }
+      setBusy($("loginBtn"), true);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        message.textContent = friendlyError(error);
+      } finally {
+        setBusy($("loginBtn"), false, "Login · ဝင်မည်");
+      }
+    });
+
+    function validateSignup(name, email, password, confirm, message) {
+      message.textContent = "";
+      if (!name || !email || !password || !confirm) {
+        message.textContent = "Please complete every field.";
+        return false;
+      }
+      if (password.length < 6) {
+        message.textContent = "Password must contain at least 6 characters.";
+        return false;
+      }
+      if (password !== confirm) {
+        message.textContent = "Passwords do not match.";
+        return false;
+      }
+      return true;
+    }
+
+    $("customerSignupForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("customerSignupName").value.trim();
+      const email = $("customerSignupEmail").value.trim();
+      const password = $("customerSignupPassword").value;
+      const confirm = $("customerSignupConfirm").value;
+      const message = $("customerSignupMessage");
+      if (!validateSignup(name, email, password, confirm, message)) return;
+      setBusy($("customerSignupBtn"), true);
+      try {
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", credential.user.uid), {
+          name, email, role: "user", createdAt: serverTimestamp()
+        });
+        toast("Customer account created.");
+      } catch (error) {
+        message.textContent = friendlyError(error);
+      } finally {
+        setBusy($("customerSignupBtn"), false, "Create Customer Account");
+      }
+    });
+
+    function syncCustomCategory(selectId, wrapperId, inputId) {
+      const isOther = $(selectId).value === "other";
+      $(wrapperId).hidden = !isOther;
+      $(inputId).required = isOther;
+      if (!isOther) $(inputId).value = "";
+    }
+
+    $("proposedCategory").addEventListener("change", () => {
+      syncCustomCategory("proposedCategory", "proposedCustomCategoryWrap", "proposedCustomCategory");
+    });
+    $("shopCategory").addEventListener("change", () => {
+      syncCustomCategory("shopCategory", "shopCustomCategoryWrap", "shopCustomCategory");
+    });
+
+    $("ownerSignupForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("ownerSignupName").value.trim();
+      const email = $("ownerSignupEmail").value.trim();
+      const password = $("ownerSignupPassword").value;
+      const confirm = $("ownerSignupConfirm").value;
+      const message = $("ownerSignupMessage");
+      const phone = $("ownerPhone").value.trim();
+      const proposedBusinessName = $("proposedBusinessName").value.trim();
+      const proposedCategory = $("proposedCategory").value;
+      const proposedCustomCategory = $("proposedCustomCategory").value.trim();
+      const proposedAddress = $("proposedAddress").value.trim();
+      const businessDescription = $("businessDescription").value.trim();
+      if (!validateSignup(name, email, password, confirm, message)) return;
+      if (!phone || !proposedBusinessName || !proposedAddress || !businessDescription) {
+        message.textContent = "Please complete all business details.";
+        return;
+      }
+      if (proposedCategory === "other" && (proposedCustomCategory.length < 2 || proposedCustomCategory.length > 50)) {
+        message.textContent = t("customCategoryRequired");
+        return;
+      }
+      setBusy($("ownerSignupBtn"), true);
+      try {
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        const ownerProfile = {
+          name, email, phone, proposedBusinessName, proposedCategory, proposedAddress,
+          businessDescription, role: "owner_pending", createdAt: serverTimestamp()
+        };
+        if (proposedCategory === "other") ownerProfile.proposedCustomCategory = proposedCustomCategory;
+        await setDoc(doc(db, "users", credential.user.uid), ownerProfile);
+        toast("Owner application submitted.");
+      } catch (error) {
+        message.textContent = friendlyError(error);
+      } finally {
+        setBusy($("ownerSignupBtn"), false, "Submit Owner Application");
+      }
+    });
+
+    $("staffSignupForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("staffSignupName").value.trim();
+      const email = $("staffSignupEmail").value.trim();
+      const password = $("staffSignupPassword").value;
+      const confirm = $("staffSignupConfirm").value;
+      const inviteCode = $("staffInviteCode").value.trim().toUpperCase();
+      const message = $("staffSignupMessage");
+      if (!validateSignup(name, email, password, confirm, message)) return;
+      if (!inviteCode) {
+        message.textContent = "Enter a shop invite code.";
+        return;
+      }
+      setBusy($("staffSignupBtn"), true);
+      let credential = null;
+      try {
+        credential = await createUserWithEmailAndPassword(auth, email, password);
+        const inviteSnapshot = await getDoc(doc(db, "invites", inviteCode));
+        if (!inviteSnapshot.exists() || inviteSnapshot.data().active !== true) {
+          throw new Error("This invite code is invalid or inactive.");
+        }
+        const invite = inviteSnapshot.data();
+        await setDoc(doc(db, "users", credential.user.uid), {
+          name, email, role: "staff_pending", requestedShopId: invite.shopId,
+          requestedOwnerId: invite.ownerId, inviteCode, createdAt: serverTimestamp()
+        });
+        toast("Staff access request submitted.");
+      } catch (error) {
+        if (credential?.user) {
+          await deleteUser(credential.user).catch(() => {});
+          await signOut(auth).catch(() => {});
+        }
+        message.textContent = friendlyError(error);
+      } finally {
+        setBusy($("staffSignupBtn"), false, "Request Staff Access");
+      }
+    });
+
+    $("authTabs").addEventListener("click", (event) => {
+      const viewId = event.target.closest("[data-auth-view]")?.dataset.authView;
+      if (viewId) showAuth(viewId);
+    });
+    $("logoutBtn").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        toast("Logged out successfully.");
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    });
+
+    function showRoleStatus(role) {
+      const profile = state.profile;
+      role = String(role || "");
+      const pending = role === "owner_pending" || role === "staff_pending";
+      $("refreshStatusBtn").hidden = !pending;
+      const content = {
+        owner_pending: ["◷","Waiting for admin approval","A platform admin will review your business application."],
+        staff_pending: ["◷","Waiting for shop owner approval","The shop owner will review your staff access request."],
+        owner_rejected: ["♡","Owner application not approved","Thank you for applying. Your business application was not approved at this time."],
+        staff_rejected: ["♡","Staff request not approved","Your staff access request was not approved by the shop owner."],
+        staff_removed: ["⊘","Staff access removed","Your access was removed by the shop owner. Contact the owner if you believe this is a mistake."]
+      }[role] || ["!","Account access unavailable","This account does not have a supported role."];
+      $("roleStatusIcon").textContent = content[0];
+      $("roleStatusTitle").textContent = content[1];
+      $("roleStatusText").textContent = content[2];
+      const ownerDetails = `
+        <div class="info-line"><b>Business</b>${escapeHtml(profile.proposedBusinessName || "—")}</div>
+        <div class="info-line"><b>Category</b>${escapeHtml(categoryLabel(profile.proposedCategory, profile.proposedCustomCategory))}</div>
+        <div class="info-line"><b>Address</b>${escapeHtml(profile.proposedAddress || "—")}</div>
+        <div class="info-line"><b>Description</b>${escapeHtml(profile.businessDescription || "—")}</div>`;
+      $("roleStatusDetails").innerHTML = role.startsWith("owner_") ? ownerDetails :
+        `<div class="info-line"><b>Invite code</b>${escapeHtml(profile.inviteCode || "—")}</div>
+         <div class="info-line" id="pendingShopInfo"><b>Requested shop</b>Loading…</div>`;
+      if (role.startsWith("staff_") && profile.requestedShopId) {
+        getDoc(doc(db, "shops", profile.requestedShopId)).then((snapshot) => {
+          if ($("pendingShopInfo") && state.profile?.role === role) {
+            $("pendingShopInfo").innerHTML = `<b>Requested shop</b>${escapeHtml(snapshot.exists() ? snapshot.data().name : "Shop unavailable")}`;
+          }
+        }).catch(() => {});
+      }
+    }
+
+    async function refreshStatus() {
+      try {
+        const snapshot = await getDoc(doc(db, "users", state.user.uid));
+        if (!snapshot.exists()) throw new Error("Profile not found.");
+        state.profile = snapshot.data();
+        routeRole();
+        toast("Status refreshed.");
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    $("refreshStatusBtn").addEventListener("click", refreshStatus);
+    $("statusLogoutBtn").addEventListener("click", () => signOut(auth).catch((error) => toast(friendlyError(error), "err")));
+
+    function renderPendingOwners(records) {
+      $("pendingOwnerCount").textContent = String(records.length);
+      $("pendingOwnerList").innerHTML = records.length ? records.map((owner) => `
+        <article class="card application-card">
+          <div class="shop-top"><div><h3>${escapeHtml(owner.name)}</h3><p class="meta">${escapeHtml(owner.email)}</p></div><span class="pill waiting">Pending</span></div>
+          <div class="info-grid">
+            <div class="info-line"><b>Phone</b>${escapeHtml(owner.phone)}</div>
+            <div class="info-line"><b>Proposed business</b>${escapeHtml(owner.proposedBusinessName)} · ${escapeHtml(categoryLabel(owner.proposedCategory, owner.proposedCustomCategory))}</div>
+            <div class="info-line"><b>Address</b>${escapeHtml(owner.proposedAddress)}</div>
+            <div class="info-line"><b>Description</b>${escapeHtml(owner.businessDescription)}</div>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button" data-admin-approve="${escapeHtml(owner.id)}">Approve · အတည်ပြု</button>
+            <button class="btn danger" type="button" data-admin-reject="${escapeHtml(owner.id)}">Reject · ငြင်းပယ်</button>
+          </div>
+        </article>`).join("") :
+        '<div class="card empty"><span class="empty-icon">✓</span>No owner applications are waiting.</div>';
+    }
+
+    function listenToPendingOwners() {
+      const q = query(collection(db, "users"), where("role", "==", "owner_pending"));
+      state.unsubs.pendingOwners = onSnapshot(q, (snapshot) => {
+        state.pendingOwners = snapshot.docs.map((item) => ({ id:item.id, ...item.data() }));
+        renderPendingOwners(state.pendingOwners);
+      }, (error) => {
+        $("pendingOwnerList").innerHTML = `<div class="card empty">${escapeHtml(friendlyError(error))}</div>`;
+      });
+    }
+
+    async function reviewOwner(uid, approved) {
+      try {
+        if (state.profile.role !== "admin") throw new Error("Admin access required.");
+        const ref = doc(db, "users", uid);
+        const snapshot = await getDoc(ref);
+        if (!snapshot.exists() || snapshot.data().role !== "owner_pending") throw new Error("This application is no longer pending.");
+        await updateDoc(ref, approved
+          ? { role:"owner", approvedAt:serverTimestamp() }
+          : { role:"owner_rejected", reviewedAt:serverTimestamp() });
+        toast(approved ? "Owner approved." : "Owner application rejected.");
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    function shopCardHtml(id, shop, staff = false) {
+      const services = Array.isArray(shop.services) ? shop.services : [];
+      return `
+        <article class="shop-card">
+          <div class="shop-top">
+            <div><h3>${escapeHtml(shop.name)}</h3><div class="meta">📍 ${escapeHtml(shop.address)}</div></div>
+            <span class="pill">${escapeHtml(categoryLabel(shop.category, shop.customCategory))}</span>
+          </div>
+          <div class="meta">🕒 ${escapeHtml(shop.openingHours)} · ⏱ ${escapeHtml(shop.minutesPerCustomer)} min/customer</div>
+          <div class="service-tags">${services.map((service) => `<span class="tag">${escapeHtml(service)}</span>`).join("")}</div>
+          <button class="btn ${staff ? "ghost" : ""}" type="button" data-${staff ? "staff-shop" : "customer-shop"}="${escapeHtml(id)}">
+            ${staff ? "Manage Queue · စီမံရန်" : "View & Join · ကြည့်ရှုမည်"}
+          </button>
+        </article>`;
+    }
+
+    function ownerShopCardHtml(id, shop) {
+      const services = Array.isArray(shop.services) ? shop.services : [];
+      return `
+        <article class="shop-card">
+          <div class="shop-top"><div><h3>${escapeHtml(shop.name)}</h3><div class="meta">📍 ${escapeHtml(shop.address)}</div></div>
+          <span class="pill">${escapeHtml(categoryLabel(shop.category, shop.customCategory))}</span></div>
+          <div class="meta">🕒 ${escapeHtml(shop.openingHours)} · ⏱ ${escapeHtml(shop.minutesPerCustomer)} min/customer</div>
+          <div class="service-tags">${services.map((service) => `<span class="tag">${escapeHtml(service)}</span>`).join("")}</div>
+          <div class="invite-code"><div><span class="sub">Staff invite</span><br><code>${escapeHtml(shop.inviteCode || "Not generated")}</code></div>
+            <button class="btn small secondary" type="button" data-copy-invite="${escapeHtml(shop.inviteCode || "")}" ${shop.inviteCode ? "" : "disabled"}>Copy</button></div>
+          <div class="actions">
+            <button class="btn ghost" type="button" data-staff-shop="${escapeHtml(id)}">Manage Queue</button>
+            <button class="btn secondary" type="button" data-regenerate-invite="${escapeHtml(id)}">Regenerate Invite</button>
+          </div>
+        </article>`;
+    }
+
+    function generateInviteCode() {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let value = "QQ-";
+      for (let i = 0; i < 6; i += 1) value += alphabet[Math.floor(Math.random() * alphabet.length)];
+      return value;
+    }
+
+    async function uniqueInviteCode() {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const code = generateInviteCode();
+        if (!(await getDoc(doc(db, "invites", code))).exists()) return code;
+      }
+      throw new Error("Could not create a unique invite code. Try again.");
+    }
+
+    async function assertOwnerOwnsShop(shopId) {
+      if (state.profile.role !== "owner") throw new Error("Owner access required.");
+      const snapshot = await getDoc(doc(db, "shops", shopId));
+      if (!snapshot.exists() || snapshot.data().ownerId !== state.user.uid) throw new Error("You cannot manage this shop.");
+      return { id:snapshot.id, ...snapshot.data() };
+    }
+
+    async function regenerateInvite(shopId) {
+      try {
+        const shop = await assertOwnerOwnsShop(shopId);
+        const code = await uniqueInviteCode();
+        const batch = writeBatch(db);
+        if (shop.inviteCode) {
+          const oldRef = doc(db, "invites", shop.inviteCode);
+          const oldSnapshot = await getDoc(oldRef);
+          if (oldSnapshot.exists()) batch.update(oldRef, { active:false });
+        }
+        batch.set(doc(db, "invites", code), {
+          code, shopId, ownerId:state.user.uid, active:true, createdAt:serverTimestamp()
+        });
+        batch.update(doc(db, "shops", shopId), { inviteCode:code });
+        await batch.commit();
+        toast(`New invite code: ${code}`);
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    function renderOwnerPeople() {
+      const shopName = (id) => state.ownerShops.get(id)?.name || "Unknown shop";
+      $("pendingStaffList").innerHTML = state.pendingStaff.length ? state.pendingStaff.map((person) => `
+        <div class="ticket-row">
+          <div><strong>${escapeHtml(person.name)}</strong><div class="meta">${escapeHtml(person.email)} · ${escapeHtml(shopName(person.requestedShopId))}</div></div>
+          <div class="wide-actions">
+            <button class="btn small" type="button" data-staff-approve="${escapeHtml(person.id)}">Approve</button>
+            <button class="btn small danger" type="button" data-staff-reject="${escapeHtml(person.id)}">Reject</button>
+          </div>
+        </div>`).join("") : '<div class="empty">No pending staff requests.</div>';
+      $("approvedStaffList").innerHTML = state.approvedStaff.length ? state.approvedStaff.map((person) => `
+        <div class="ticket-row">
+          <div><strong>${escapeHtml(person.name)}</strong><div class="meta">${escapeHtml(person.email)} · ${escapeHtml(shopName(person.shopId))}</div></div>
+          <button class="btn small danger" type="button" data-staff-remove="${escapeHtml(person.id)}">Remove</button>
+        </div>`).join("") : '<div class="empty">No approved staff yet.</div>';
+    }
+
+    function listenToOwnerPeople() {
+      const pendingQuery = query(collection(db, "users"), where("requestedOwnerId", "==", state.user.uid));
+      state.unsubs.pendingStaff = onSnapshot(pendingQuery, (snapshot) => {
+        state.pendingStaff = snapshot.docs.map((item) => ({id:item.id,...item.data()})).filter((person) => person.role === "staff_pending");
+        renderOwnerPeople();
+      }, (error) => toast(friendlyError(error), "err"));
+      const approvedQuery = query(collection(db, "users"), where("ownerId", "==", state.user.uid));
+      state.unsubs.approvedStaff = onSnapshot(approvedQuery, (snapshot) => {
+        state.approvedStaff = snapshot.docs.map((item) => ({id:item.id,...item.data()})).filter((person) => person.role === "staff");
+        renderOwnerPeople();
+      }, (error) => toast(friendlyError(error), "err"));
+    }
+
+    async function reviewStaff(uid, action) {
+      try {
+        if (state.profile.role !== "owner") throw new Error("Owner access required.");
+        const ref = doc(db, "users", uid);
+        const snapshot = await getDoc(ref);
+        if (!snapshot.exists()) throw new Error("Staff request not found.");
+        const person = snapshot.data();
+        if (person.role !== "staff_pending" || person.requestedOwnerId !== state.user.uid) throw new Error("This request is not available.");
+        await assertOwnerOwnsShop(person.requestedShopId);
+        await updateDoc(ref, action === "approve"
+          ? { role:"staff", shopId:person.requestedShopId, ownerId:state.user.uid, approvedAt:serverTimestamp() }
+          : { role:"staff_rejected", reviewedAt:serverTimestamp() });
+        toast(action === "approve" ? "Staff member approved." : "Staff request rejected.");
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    async function removeStaff(uid) {
+      try {
+        if (state.profile.role !== "owner") throw new Error("Owner access required.");
+        const ref = doc(db, "users", uid);
+        const snapshot = await getDoc(ref);
+        if (!snapshot.exists() || snapshot.data().role !== "staff" || snapshot.data().ownerId !== state.user.uid) {
+          throw new Error("You cannot remove this staff member.");
+        }
+        await assertOwnerOwnsShop(snapshot.data().shopId);
+        await updateDoc(ref, { role:"staff_removed" });
+        toast("Staff access removed.");
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+
+    function listenToAllShops() {
+      if (state.unsubs.allShops) return;
+      $("shopList").innerHTML = '<div class="loading-row"><span class="spinner"></span>Loading shops…</div>';
+      state.unsubs.allShops = onSnapshot(collection(db, "shops"), (snapshot) => {
+        state.shops = snapshot.docs
+          .map((snap) => ({ id: snap.id, ...snap.data() }))
+          .sort((a,b) => String(a.name).localeCompare(String(b.name)));
+        renderShopList();
+      }, (error) => {
+        console.error("[QuickQueue] listen_all_shops failed", { code:error?.code || "unknown", error });
+        $("shopList").innerHTML = `<div class="card empty">${escapeHtml(friendlyError(error))}</div>`;
+      });
+    }
+
+    function renderShopList() {
+      const categories = ["clinic","salon","restaurant","other"];
+      $("allShopCount").textContent = String(state.shops.length);
+      categories.forEach((category) => {
+        $(`${category}ShopCount`).textContent = String(state.shops.filter((shop) => shop.category === category).length);
+      });
+      document.querySelectorAll("#shopCategoryTabs [data-category]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.category === state.selectedCategory);
+      });
+      const labels = { all:t("allShops"), clinic:t("clinics"), salon:t("hairSalons"), restaurant:t("restaurants"), other:t("otherServices") };
+      const emptyMessages = {
+        all:"No shops available yet.",
+        clinic:"No clinics available yet.",
+        salon:"No hair salons available yet.",
+        restaurant:"No restaurants available yet.",
+        other:t("noOtherServices")
+      };
+      $("categoryTitle").textContent = labels[state.selectedCategory] || labels.all;
+      const visible = state.selectedCategory === "all"
+        ? state.shops
+        : state.shops.filter((shop) => shop.category === state.selectedCategory);
+      $("shopList").innerHTML = visible.length
+        ? visible.map((shop) => shopCardHtml(shop.id, shop)).join("")
+        : `<div class="card empty"><span class="empty-icon">🏪</span>${escapeHtml(emptyMessages[state.selectedCategory] || emptyMessages.all)}</div>`;
+    }
+
+    function selectCategory(category) {
+      if (state.profile?.role !== "user") return;
+      state.selectedCategory = ["all","clinic","salon","restaurant","other"].includes(category) ? category : "all";
+      showCustomerView("shopListView");
+      renderShopList();
+    }
+
+    function renderCustomerShop(shop) {
+      const services = Array.isArray(shop.services) ? shop.services : [];
+      const waiting = state.customerShopTickets.filter((ticket) => ticket.status === "waiting");
+      const serving = state.customerShopTickets.find((ticket) => ticket.status === "serving");
+      $("customerShopDetail").innerHTML = `
+        <div class="detail-hero">
+          <div class="shop-top"><div><h2>${escapeHtml(shop.name)}</h2><p class="meta">📍 ${escapeHtml(shop.address)}</p></div>
+          <span class="pill">${escapeHtml(categoryLabel(shop.category, shop.customCategory))}</span></div>
+          <p class="meta">🕒 ${escapeHtml(shop.openingHours)} · ${escapeHtml(shop.minutesPerCustomer)} minutes per customer</p>
+          <div class="service-tags">${services.map((service) => `<span class="tag">${escapeHtml(service)}</span>`).join("")}</div>
+          <div class="live-grid">
+            <div class="stat"><b id="shopWaitingCount">${waiting.length}</b><span>Waiting · စောင့်နေသူ</span></div>
+            <div class="stat"><b id="shopServingTicket">${escapeHtml(serving?.ticketNumber || "—")}</b><span>Now serving · လက်ရှိခေါ်နေ</span></div>
+          </div>
+        </div>`;
+      $("queueService").innerHTML = services.length
+        ? services.map((service) => `<option value="${escapeHtml(service)}">${escapeHtml(service)}</option>`).join("")
+        : '<option value="General Service">General Service</option>';
+    }
+
+    async function openCustomerShop(shopId) {
+      try {
+        if (state.profile?.role !== "user") throw new Error("Customer access required.");
+        const shopRef = doc(db, "shops", shopId);
+        const snapshot = await getDoc(shopRef);
+        if (!snapshot.exists()) {
+          toast("This shop no longer exists.", "err");
+          return;
+        }
+        state.customerShop = { id: snapshot.id, ...snapshot.data() };
+        state.customerShopTickets = [];
+        $("joinQueueMessage").textContent = "";
+        $("viewExistingTicketBtn").hidden = true;
+        showCustomerView("shopDetailView");
+        renderCustomerShop(state.customerShop);
+        stopListener("customerShop");
+        state.unsubs.customerShop = onSnapshot(shopRef, (live) => {
+          if (!live.exists()) return;
+          state.customerShop = { id: live.id, ...live.data() };
+          renderCustomerShop(state.customerShop);
+        });
+        stopListener("customerShopTickets");
+        state.unsubs.customerShopTickets = onSnapshot(collection(db, "shops", shopId, "tickets"), (tickets) => {
+          state.customerShopTickets = tickets.docs.map((item) => item.data());
+          renderCustomerShop(state.customerShop);
+        }, (error) => toast(friendlyError(error), "err"));
+        await recoverActiveTicketForShop(shopId);
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    async function saveActiveTicketReference(shopId, ticketId) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Please sign in again.");
+      try {
+        await setDoc(doc(db, "users", currentUser.uid), {
+          activeShopId:shopId,
+          activeTicketId:ticketId,
+          activeTicketUpdatedAt:serverTimestamp()
+        }, { merge:true });
+      } catch (error) {
+        console.error("[QuickQueue] save_active_ticket_reference failed", {
+          code:error?.code || "unknown", shopId, ticketId, error
+        });
+        throw error;
+      }
+    }
+
+    async function recoverActiveTicketForShop(shopId) {
+      const currentUser = auth.currentUser;
+      if (!currentUser || state.profile?.role !== "user") return null;
+      try {
+        const ticketsRef = collection(db, "shops", shopId, "tickets");
+        const snapshot = await getDocs(query(ticketsRef, where("customerId", "==", currentUser.uid)));
+        const existing = snapshot.docs.find((item) => ["waiting","serving"].includes(item.data().status));
+        if (!existing) return null;
+        if (state.profile.activeShopId !== shopId || state.profile.activeTicketId !== existing.id) {
+          await saveActiveTicketReference(shopId, existing.id);
+        }
+        $("joinQueueMessage").textContent = `You already have active ticket ${existing.data().ticketNumber || ""} at this shop.`;
+        $("viewExistingTicketBtn").hidden = false;
+        return existing;
+      } catch (error) {
+        console.error("[QuickQueue] recover_active_ticket failed", {
+          code:error?.code || "unknown", shopId, error
+        });
+        return null;
+      }
+    }
+
+    $("joinQueueForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const shop = state.customerShop;
+      const name = $("queueName").value.trim();
+      const service = $("queueService").value;
+      $("joinQueueMessage").textContent = "";
+      if (!shop || !name || !service) {
+        $("joinQueueMessage").textContent = "Please enter your name and choose a service.";
+        return;
+      }
+      setBusy($("joinQueueBtn"), true);
+      try {
+        if (state.profile?.role !== "user") throw new Error("Customer access required.");
+        const ticketsRef = collection(db, "shops", shop.id, "tickets");
+        const existingSnap = await getDocs(query(ticketsRef, where("customerId", "==", state.user.uid)));
+        const existing = existingSnap.docs.find((ticket) => ["waiting","serving"].includes(ticket.data().status));
+        if (existing) {
+          await saveActiveTicketReference(shop.id, existing.id);
+          $("joinQueueMessage").textContent = `You already have active ticket ${existing.data().ticketNumber || ""} at this shop.`;
+          $("viewExistingTicketBtn").hidden = false;
+          toast("Existing ticket recovered. Select View My Ticket.");
+          return;
+        }
+        const ticketNumber = `A-${String(Date.now()).slice(-4)}`;
+        const ticketRef = await addDoc(ticketsRef, {
+          customerId: state.user.uid,
+          customerName: name,
+          service,
+          ticketNumber,
+          status: "waiting",
+          createdAt: serverTimestamp()
+        });
+        await saveActiveTicketReference(shop.id, ticketRef.id);
+        toast(`Joined successfully. Your ticket is ${ticketNumber}.`);
+        showCustomerView("myQueueView");
+        startMyTicketListeners(shop.id, ticketRef.id);
+      } catch (error) {
+        console.error("[QuickQueue] join_queue failed", { code:error?.code || "unknown", shopId:shop?.id, error });
+        $("joinQueueMessage").textContent = friendlyError(error);
+      } finally {
+        setBusy($("joinQueueBtn"), false, "Join Queue · တန်းစီဝင်မည်");
+      }
+    });
+
+    function listenToMyTickets() {
+      const shopId = state.profile?.activeShopId;
+      const ticketId = state.profile?.activeTicketId;
+      startMyTicketListeners(shopId, ticketId);
+    }
+
+    function startMyTicketListeners(shopId, ticketId) {
+      stopListener("myTicket");
+      stopListener("myTicketShop");
+      stopListener("myShopTickets");
+      state.myTicket = null;
+      state.myTicketShop = null;
+      state.myShopTickets = [];
+      if (!shopId || !ticketId || state.profile?.role !== "user") {
+        renderMyQueue();
+        return;
+      }
+      const ticketRef = doc(db, "shops", shopId, "tickets", ticketId);
+      state.unsubs.myTicket = onSnapshot(ticketRef, (snapshot) => {
+        if (!snapshot.exists()) {
+          state.myTicket = {
+            id:ticketId, ref:ticketRef, shopId, status:"missing",
+            customerId:auth.currentUser?.uid, ticketNumber:"Unavailable", service:"—"
+          };
+        } else if (snapshot.data().customerId !== auth.currentUser?.uid) {
+          console.error("[QuickQueue] active_ticket_owner_mismatch", { shopId, ticketId });
+          state.myTicket = {
+            id:ticketId, ref:ticketRef, shopId, status:"missing",
+            customerId:auth.currentUser?.uid, ticketNumber:"Unavailable", service:"—"
+          };
+        } else {
+          state.myTicket = { id:snapshot.id, ref:snapshot.ref, shopId, ...snapshot.data() };
+        }
+        renderMyQueue();
+      }, (error) => {
+        console.error("[QuickQueue] listen_active_ticket failed", {
+          code:error?.code || "unknown", shopId, ticketId, error
+        });
+        $("myQueueContent").innerHTML = `<div class="card empty">${escapeHtml(friendlyError(error))}</div>`;
+      });
+      state.unsubs.myTicketShop = onSnapshot(doc(db, "shops", shopId), (snapshot) => {
+        state.myTicketShop = snapshot.exists() ? { id:snapshot.id, ...snapshot.data() } : null;
+        renderMyQueue();
+      }, (error) => console.error("[QuickQueue] listen_active_ticket_shop failed", {
+        code:error?.code || "unknown", shopId, error
+      }));
+      state.unsubs.myShopTickets = onSnapshot(collection(db, "shops", shopId, "tickets"), (snapshot) => {
+        state.myShopTickets = snapshot.docs.map((item) => ({ id:item.id, ...item.data() }));
+        renderMyQueue();
+      }, (error) => console.error("[QuickQueue] listen_shop_queue_for_ahead failed", {
+        code:error?.code || "unknown", shopId, error
+      }));
+    }
+
+    function calculateAhead(ticket) {
+      if (!ticket || ticket.status !== "waiting") return 0;
+      const mine = timestampMs(ticket.createdAt);
+      return state.myShopTickets.filter((other) => {
+        return other.id !== ticket.id &&
+          ["waiting","serving"].includes(other.status) &&
+          timestampMs(other.createdAt) < mine;
+      }).length;
+    }
+
+    function renderMyQueue() {
+      const target = $("myQueueContent");
+      const ticket = state.myTicket;
+      if (!ticket) {
+        target.innerHTML = state.profile?.activeShopId && state.profile?.activeTicketId
+          ? '<div class="card loading-row"><span class="spinner"></span>Loading your saved ticket…</div>'
+          : '<div class="card empty"><span class="empty-icon">🎟️</span>You do not have a queue ticket yet.<br><span class="sub">တန်းစီလက်မှတ် မရှိသေးပါ</span></div>';
+        return;
+      }
+      const shop = state.myTicketShop;
+      if (ticket.status === "completed") {
+        target.innerHTML = `
+          <div class="queue-ticket">
+            <div class="success-mark">✓</div>
+            <h2>Service complete!</h2>
+            <p class="sub">ဝန်ဆောင်မှု ပြီးဆုံးပါပြီ</p>
+            <div class="ticket-num">${escapeHtml(ticket.ticketNumber)}</div>
+            <p>${escapeHtml(shop?.name || "Shop")} · ${escapeHtml(ticket.service)}</p>
+            <span class="pill completed" style="margin-top:12px">completed</span>
+            <button class="btn full" id="clearTicketBtn" type="button">Done / Clear Ticket · ပြီးပါပြီ</button>
+          </div>`;
+        $("clearTicketBtn").addEventListener("click", clearSavedTicketReference);
+        return;
+      }
+      const ahead = calculateAhead(ticket);
+      const minutes = ahead * Number(shop?.minutesPerCustomer || 0);
+      const isFinal = ["cancelled","skipped","missing"].includes(ticket.status);
+      target.innerHTML = `
+        <div class="queue-ticket">
+          <span class="pill ${escapeHtml(ticket.status)}">${escapeHtml(ticket.status === "missing" ? "ticket unavailable" : ticket.status)}</span>
+          <p class="sub" style="margin-top:10px">Your ticket · သင့်နံပါတ်</p>
+          <div class="ticket-num">${escapeHtml(ticket.ticketNumber)}</div>
+          <h3>${escapeHtml(shop?.name || "Loading shop…")}</h3>
+          <p class="meta">${escapeHtml(ticket.service)}</p>
+          <div class="stats">
+            <div class="stat"><b>${ahead}</b><span>People ahead · ရှေ့ရှိသူ</span></div>
+            <div class="stat"><b>${minutes} min</b><span>Estimated wait · စောင့်ချိန်</span></div>
+          </div>
+          ${ticket.status === "waiting" ? '<button class="btn danger full" id="cancelTicketBtn" type="button">Cancel Queue · ပယ်ဖျက်မည်</button>' : ""}
+          ${ticket.status === "serving" ? '<p style="margin-top:15px;color:var(--success);font-weight:750">It is your turn now! · ယခု သင့်အလှည့်ပါ</p>' : ""}
+          ${ticket.status === "skipped" ? '<p style="margin-top:15px;color:var(--warning);font-weight:750">This ticket was skipped. Please speak with staff.</p>' : ""}
+          ${ticket.status === "cancelled" ? '<p style="margin-top:15px;color:var(--muted)">This ticket was cancelled.</p>' : ""}
+          ${ticket.status === "missing" ? '<p style="margin-top:15px;color:var(--muted)">The saved ticket document no longer exists.</p>' : ""}
+          ${isFinal ? '<button class="btn secondary full" id="clearTicketBtn" type="button">Clear Ticket Reference · ရှင်းလင်းမည်</button>' : ""}
+        </div>`;
+      $("cancelTicketBtn")?.addEventListener("click", () => {
+        showConfirm("Cancel this ticket?", "Only your waiting ticket will be cancelled. တန်းစီမှုကို ပယ်ဖျက်ပါမည်။", cancelMyTicket);
+      });
+      $("clearTicketBtn")?.addEventListener("click", clearSavedTicketReference);
+    }
+
+    async function clearSavedTicketReference() {
+      const currentUser = auth.currentUser;
+      if (!currentUser || state.profile?.role !== "user") return;
+      try {
+        await setDoc(doc(db, "users", currentUser.uid), {
+          activeShopId:null,
+          activeTicketId:null,
+          activeTicketUpdatedAt:serverTimestamp()
+        }, { merge:true });
+        toast("Saved ticket cleared.");
+      } catch (error) {
+        console.error("[QuickQueue] clear_active_ticket_reference failed", {
+          code:error?.code || "unknown", error
+        });
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    async function cancelMyTicket() {
+      const ticket = state.myTicket;
+      if (state.profile?.role !== "user" || !ticket || ticket.customerId !== state.user.uid || ticket.status !== "waiting") {
+        toast("Only your own waiting ticket can be cancelled.", "err");
+        return;
+      }
+      try {
+        const fresh = await getDoc(ticket.ref);
+        if (!fresh.exists() || fresh.data().customerId !== state.user.uid || fresh.data().status !== "waiting") {
+          throw new Error("This ticket can no longer be cancelled.");
+        }
+        await updateDoc(ticket.ref, { status: "cancelled" });
+        toast("Queue cancelled successfully.");
+      } catch (error) {
+        console.error("[QuickQueue] cancel_ticket failed", {
+          code:error?.code || "unknown", shopId:ticket?.shopId, ticketId:ticket?.id, error
+        });
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    function listenToOwnedShops() {
+      stopListener("ownedShops");
+      $("ownedShopList").innerHTML = '<div class="loading-row"><span class="spinner"></span>Loading…</div>';
+      const ownerUid = auth.currentUser?.uid;
+      if (!ownerUid) {
+        $("ownedShopList").innerHTML = '<div class="card empty">Please sign in again.</div>';
+        return;
+      }
+      const q = query(collection(db, "shops"), where("ownerId", "==", ownerUid));
+      state.unsubs.ownedShops = onSnapshot(q, (snapshot) => {
+        const shops = snapshot.docs
+          .map((snap) => ({ id: snap.id, ...snap.data() }))
+          .sort((a,b) => String(a.name).localeCompare(String(b.name)));
+        state.ownerShops = new Map(shops.map((shop) => [shop.id, shop]));
+        renderOwnerPeople();
+        $("ownedShopList").innerHTML = shops.length
+          ? shops.map((shop) => ownerShopCardHtml(shop.id, shop)).join("")
+          : '<div class="card empty"><span class="empty-icon">🏪</span>No shops yet. Create your first shop.</div>';
+      }, (error) => {
+        $("ownedShopList").innerHTML = `<div class="card empty">${escapeHtml(friendlyError(error))}</div>`;
+      });
+    }
+
+    $("createShopForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = $("shopName").value.trim();
+      const category = $("shopCategory").value;
+      const customCategory = $("shopCustomCategory").value.trim();
+      const address = $("shopAddress").value.trim();
+      const openingHours = $("shopHours").value.trim();
+      const minutesPerCustomer = Number($("shopMinutes").value);
+      const services = $("shopServices").value.split(",").map((value) => value.trim()).filter(Boolean);
+      $("createShopMessage").textContent = "";
+      if (!name || !address || !openingHours || !services.length || !Number.isFinite(minutesPerCustomer) || minutesPerCustomer < 1) {
+        $("createShopMessage").textContent = "Please enter valid details in every field.";
+        return;
+      }
+      if (category === "other" && (customCategory.length < 2 || customCategory.length > 50)) {
+        $("createShopMessage").textContent = t("customCategoryRequired");
+        return;
+      }
+      setBusy($("createShopBtn"), true);
+      let shopRef = null;
+      let failedOperation = "validate_owner";
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser || state.profile?.role !== "owner") {
+          throw new Error("Only an authenticated approved owner can create shops.");
+        }
+        failedOperation = "generate_invite_code";
+        const inviteCode = await uniqueInviteCode();
+        failedOperation = "create_shop";
+        const shopData = {
+          name, category, address, openingHours, minutesPerCustomer, services,
+          ownerId: currentUser.uid, inviteCode, createdAt: serverTimestamp()
+        };
+        if (category === "other") shopData.customCategory = customCategory;
+        shopRef = await addDoc(collection(db, "shops"), shopData);
+        $("createShopForm").reset();
+        $("shopMinutes").value = "10";
+        syncCustomCategory("shopCategory", "shopCustomCategoryWrap", "shopCustomCategory");
+        try {
+          await setDoc(doc(db, "invites", inviteCode), {
+            code:inviteCode,
+            shopId:shopRef.id,
+            ownerId:currentUser.uid,
+            active:true,
+            createdAt:serverTimestamp()
+          });
+          toast(`Shop created. Invite code: ${inviteCode}`);
+        } catch (inviteError) {
+          const code = inviteError?.code || "unknown";
+          console.error("[QuickQueue] create_invite failed", { code, shopId:shopRef.id, error:inviteError });
+          const message = `Shop created, but invite creation failed (${code}). Use Regenerate Invite on the shop card.`;
+          $("createShopMessage").textContent = message;
+          toast(message, "err");
+        }
+      } catch (error) {
+        console.error(`[QuickQueue] ${failedOperation} failed`, { code:error?.code || "unknown", error });
+        $("createShopMessage").textContent = friendlyError(error);
+      } finally {
+        setBusy($("createShopBtn"), false, "Create Shop · ဆိုင်ဖွင့်မည်");
+      }
+    });
+
+    function renderStaffTickets() {
+      const waiting = state.staffTickets
+        .filter((ticket) => ticket.status === "waiting")
+        .sort((a,b) => timestampMs(a.createdAt) - timestampMs(b.createdAt));
+      const serving = state.staffTickets.find((ticket) => ticket.status === "serving");
+      $("staffWaitingCount").textContent = String(waiting.length);
+      $("staffServingCount").textContent = serving ? "1" : "0";
+      $("staffCurrentTicket").className = serving ? "" : "empty";
+      $("staffCurrentTicket").innerHTML = serving
+        ? `<div class="ticket-row"><div><strong>${escapeHtml(serving.ticketNumber)}</strong><div>${escapeHtml(serving.customerName)}</div><div class="meta">${escapeHtml(serving.service)}</div></div><span class="pill serving">Serving</span></div>`
+        : "No customer is being served.";
+      $("staffWaitingList").innerHTML = waiting.length
+        ? waiting.map((ticket,index) => `
+            <div class="ticket-row">
+              <div><strong>${escapeHtml(ticket.ticketNumber)}</strong><div>${escapeHtml(ticket.customerName)}</div><div class="meta">${escapeHtml(ticket.service)}</div></div>
+              <span class="pill waiting">#${index + 1}</span>
+            </div>`).join("")
+        : '<div class="empty">Queue is empty · တန်းစီသူမရှိပါ</div>';
+    }
+
+    async function assertOwnedShop(shopId) {
+      const snapshot = await getDoc(doc(db, "shops", shopId));
+      if (!snapshot.exists()) throw new Error("Shop not found.");
+      const shop = snapshot.data();
+      const ownerAllowed = state.profile.role === "owner" && shop.ownerId === state.user.uid;
+      const staffAllowed = state.profile.role === "staff" &&
+        state.profile.shopId === shopId && state.profile.ownerId === shop.ownerId;
+      if (!ownerAllowed && !staffAllowed) throw new Error("You cannot manage this shop.");
+      return { id: snapshot.id, ...snapshot.data() };
+    }
+
+    async function openStaffShop(shopId) {
+      try {
+        const shop = await assertOwnedShop(shopId);
+        state.staffShop = shop;
+        $("ownerArea").hidden = true;
+        $("managementArea").hidden = false;
+        $("staffShopBackBtn").hidden = state.profile.role === "staff";
+        $("staffShopCategory").textContent = categoryLabel(shop.category, shop.customCategory);
+        $("staffShopHeader").innerHTML = `
+          <div class="detail-hero"><h2>${escapeHtml(shop.name)}</h2>
+          <p class="meta">📍 ${escapeHtml(shop.address)} · 🕒 ${escapeHtml(shop.openingHours)}</p></div>`;
+        showManagementView("staffShopView");
+        stopListener("staffTickets");
+        state.unsubs.staffTickets = onSnapshot(collection(db, "shops", shop.id, "tickets"), (snapshot) => {
+          state.staffTickets = snapshot.docs.map((item) => ({ id:item.id, ref:item.ref, ...item.data() }));
+          renderStaffTickets();
+        }, (error) => toast(friendlyError(error), "err"));
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      }
+    }
+
+    async function freshStaffTickets() {
+      if (!state.staffShop) throw new Error("Open a shop first.");
+      await assertOwnedShop(state.staffShop.id);
+      const snapshot = await getDocs(collection(db, "shops", state.staffShop.id, "tickets"));
+      return snapshot.docs.map((item) => ({ id:item.id, ref:item.ref, ...item.data() }));
+    }
+
+    async function callNext() {
+      if (state.queueBusy) return;
+      state.queueBusy = true;
+      try {
+        const tickets = await freshStaffTickets();
+        if (tickets.some((ticket) => ticket.status === "serving")) {
+          throw new Error("Complete or skip the current ticket first.");
+        }
+        const waiting = tickets
+          .filter((ticket) => ticket.status === "waiting")
+          .sort((a,b) => timestampMs(a.createdAt) - timestampMs(b.createdAt));
+        if (!waiting.length) throw new Error("No customers are waiting.");
+        await updateDoc(waiting[0].ref, { status: "serving" });
+        toast(`Now serving ${waiting[0].ticketNumber}.`);
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      } finally {
+        state.queueBusy = false;
+      }
+    }
+
+    async function updateServing(status) {
+      if (state.queueBusy) return;
+      state.queueBusy = true;
+      try {
+        const tickets = await freshStaffTickets();
+        const serving = tickets.find((ticket) => ticket.status === "serving");
+        if (!serving) throw new Error("No customer is currently being served.");
+        await updateDoc(serving.ref, { status });
+        toast(status === "completed" ? `${serving.ticketNumber} completed.` : `${serving.ticketNumber} skipped.`);
+      } catch (error) {
+        toast(friendlyError(error), "err");
+      } finally {
+        state.queueBusy = false;
+      }
+    }
+
+    $("callNextBtn").addEventListener("click", callNext);
+    $("completeBtn").addEventListener("click", () => {
+      showConfirm("Complete current ticket?", "The customer will see a completion message. ပြီးဆုံးကြောင်း အတည်ပြုပါ။", () => updateServing("completed"));
+    });
+    $("skipBtn").addEventListener("click", () => {
+      showConfirm("Skip current ticket?", "The ticket will be marked as skipped. ဤနံပါတ်ကို ကျော်ပါမည်။", () => updateServing("skipped"));
+    });
+
+    $("appShell").addEventListener("click", (event) => {
+      const category = event.target.closest("[data-category]")?.dataset.category;
+      const customerShop = event.target.closest("[data-customer-shop]")?.dataset.customerShop;
+      const staffShop = event.target.closest("[data-staff-shop]")?.dataset.staffShop;
+      const adminApprove = event.target.closest("[data-admin-approve]")?.dataset.adminApprove;
+      const adminReject = event.target.closest("[data-admin-reject]")?.dataset.adminReject;
+      const regenerate = event.target.closest("[data-regenerate-invite]")?.dataset.regenerateInvite;
+      const copyInvite = event.target.closest("[data-copy-invite]")?.dataset.copyInvite;
+      const staffApprove = event.target.closest("[data-staff-approve]")?.dataset.staffApprove;
+      const staffReject = event.target.closest("[data-staff-reject]")?.dataset.staffReject;
+      const staffRemove = event.target.closest("[data-staff-remove]")?.dataset.staffRemove;
+      if (category) selectCategory(category);
+      else if (customerShop) openCustomerShop(customerShop);
+      else if (staffShop) openStaffShop(staffShop);
+      else if (adminApprove) showConfirm("Approve owner?", "This account will be able to create and manage shops.", () => reviewOwner(adminApprove, true));
+      else if (adminReject) showConfirm("Reject owner application?", "The applicant will immediately see the rejected status.", () => reviewOwner(adminReject, false));
+      else if (regenerate) showConfirm("Regenerate invite code?", "The old invite will become inactive.", () => regenerateInvite(regenerate));
+      else if (copyInvite) navigator.clipboard.writeText(copyInvite)
+        .then(() => toast("Invite code copied.")).catch(() => toast("Could not copy the invite code.", "err"));
+      else if (staffApprove) showConfirm("Approve staff member?", "They will gain queue access to the requested shop.", () => reviewStaff(staffApprove, "approve"));
+      else if (staffReject) showConfirm("Reject staff request?", "The applicant will lose pending access.", () => reviewStaff(staffReject, "reject"));
+      else if (staffRemove) showConfirm("Remove staff access?", "This staff member will immediately lose shop access.", () => removeStaff(staffRemove));
+    });
+
+    $("shopBackBtn").addEventListener("click", () => {
+      showCustomerView("shopListView");
+      renderShopList();
+    });
+    $("staffShopBackBtn").addEventListener("click", () => {
+      if (state.profile.role !== "owner") return;
+      $("ownerArea").hidden = false;
+      $("managementArea").hidden = false;
+      showManagementView("ownerHomeView");
+    });
+    $("navHomeBtn").addEventListener("click", () => {
+      showCustomerView("shopListView");
+      renderShopList();
+    });
+    $("navQueueBtn").addEventListener("click", () => {
+      showCustomerView("myQueueView");
+      renderMyQueue();
+    });
+    $("viewExistingTicketBtn").addEventListener("click", () => {
+      showCustomerView("myQueueView");
+      listenToMyTickets();
+    });
+
+    $("confirmNoBtn").addEventListener("click", hideConfirm);
+    $("confirmYesBtn").addEventListener("click", async () => {
+      const action = confirmAction;
+      hideConfirm();
+      if (typeof action === "function") await action();
+    });
+    $("confirmOverlay").addEventListener("click", (event) => {
+      if (event.target === $("confirmOverlay")) hideConfirm();
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-language-toggle]")) return;
+      currentLanguage = currentLanguage === "en" ? "my" : "en";
+      applyTranslations();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && $("confirmOverlay").classList.contains("show")) hideConfirm();
+    });
+    syncCustomCategory("proposedCategory", "proposedCustomCategoryWrap", "proposedCustomCategory");
+    syncCustomCategory("shopCategory", "shopCustomCategoryWrap", "shopCustomCategory");
+    applyTranslations();
+  </script>
+</body>
+</html>

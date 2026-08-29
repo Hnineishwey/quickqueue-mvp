@@ -1,0 +1,291 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function shopPath(shopId) {
+      return /databases/$(database)/documents/shops/$(shopId);
+    }
+
+    function currentProfile() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return signedIn()
+        && exists(userPath(request.auth.uid))
+        && currentProfile().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function ownsShop(shopId) {
+      return hasRole('owner')
+        && exists(shopPath(shopId))
+        && get(shopPath(shopId)).data.ownerId == request.auth.uid;
+    }
+
+    function isAssignedStaff(shopId) {
+      return hasRole('staff')
+        && currentProfile().shopId == shopId
+        && exists(shopPath(shopId))
+        && currentProfile().ownerId == get(shopPath(shopId)).data.ownerId;
+    }
+
+    function managesShop(shopId) {
+      return ownsShop(shopId) || isAssignedStaff(shopId);
+    }
+
+    function validCategory(category) {
+      return category in ['clinic', 'restaurant', 'salon', 'other'];
+    }
+
+    function validInvite(code) {
+      return code.matches('^QQ-[A-HJ-NP-Z2-9]{6}$');
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (
+        request.auth.uid == uid
+        || isAdmin()
+        || resource.data.requestedOwnerId == request.auth.uid
+        || resource.data.ownerId == request.auth.uid
+      );
+
+      allow list: if isAdmin() || (
+        signedIn() && (
+          resource.data.requestedOwnerId == request.auth.uid
+          || resource.data.ownerId == request.auth.uid
+        )
+      );
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && (
+          (
+            request.resource.data.role == 'user'
+            && request.resource.data.keys().hasOnly([
+              'name', 'email', 'role', 'createdAt'
+            ])
+          )
+          || (
+            request.resource.data.role == 'owner_pending'
+            && validCategory(request.resource.data.proposedCategory)
+            && (
+              (
+                request.resource.data.proposedCategory == 'other'
+                && request.resource.data.proposedCustomCategory is string
+                && request.resource.data.proposedCustomCategory.size() >= 2
+                && request.resource.data.proposedCustomCategory.size() <= 50
+                && request.resource.data.keys().hasOnly([
+                  'name', 'email', 'phone', 'proposedBusinessName',
+                  'proposedCategory', 'proposedCustomCategory', 'proposedAddress',
+                  'businessDescription', 'role', 'createdAt'
+                ])
+              )
+              || (
+                request.resource.data.proposedCategory != 'other'
+                && request.resource.data.keys().hasOnly([
+                  'name', 'email', 'phone', 'proposedBusinessName',
+                  'proposedCategory', 'proposedAddress',
+                  'businessDescription', 'role', 'createdAt'
+                ])
+              )
+            )
+          )
+          || (
+            request.resource.data.role == 'staff_pending'
+            && exists(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode))
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.active == true
+            && request.resource.data.requestedShopId
+              == get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.shopId
+            && request.resource.data.requestedOwnerId
+              == get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.ownerId
+            && request.resource.data.keys().hasOnly([
+              'name', 'email', 'role', 'requestedShopId',
+              'requestedOwnerId', 'inviteCode', 'createdAt'
+            ])
+          )
+        );
+
+      allow update: if signedIn() && (
+        (
+          request.auth.uid == uid
+          && resource.data.role == 'user'
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'activeShopId', 'activeTicketId', 'activeTicketUpdatedAt'
+          ])
+        )
+        || (
+          isAdmin()
+          && resource.data.role == 'owner_pending'
+          && (
+            (
+              request.resource.data.role == 'owner'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'role', 'approvedAt'
+              ])
+            )
+            || (
+              request.resource.data.role == 'owner_rejected'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'role', 'reviewedAt'
+              ])
+            )
+          )
+        )
+        || (
+          hasRole('owner')
+          && resource.data.role == 'staff_pending'
+          && resource.data.requestedOwnerId == request.auth.uid
+          && ownsShop(resource.data.requestedShopId)
+          && (
+            (
+              request.resource.data.role == 'staff'
+              && request.resource.data.shopId == resource.data.requestedShopId
+              && request.resource.data.ownerId == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'role', 'shopId', 'ownerId', 'approvedAt'
+              ])
+            )
+            || (
+              request.resource.data.role == 'staff_rejected'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'role', 'reviewedAt'
+              ])
+            )
+          )
+        )
+        || (
+          hasRole('owner')
+          && resource.data.role == 'staff'
+          && resource.data.ownerId == request.auth.uid
+          && ownsShop(resource.data.shopId)
+          && request.resource.data.role == 'staff_removed'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'role'
+          ])
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    match /shops/{shopId} {
+      allow read: if signedIn();
+
+      allow create: if hasRole('owner')
+        && request.resource.data.ownerId == request.auth.uid
+        && validCategory(request.resource.data.category)
+        && request.resource.data.minutesPerCustomer is number
+        && request.resource.data.minutesPerCustomer > 0
+        && request.resource.data.services is list
+        && validInvite(request.resource.data.inviteCode)
+        && (
+          (
+            request.resource.data.category == 'other'
+            && request.resource.data.customCategory is string
+            && request.resource.data.customCategory.size() >= 2
+            && request.resource.data.customCategory.size() <= 50
+            && request.resource.data.keys().hasOnly([
+              'name', 'category', 'customCategory', 'address', 'openingHours',
+              'minutesPerCustomer', 'services', 'ownerId',
+              'inviteCode', 'createdAt'
+            ])
+          )
+          || (
+            request.resource.data.category != 'other'
+            && request.resource.data.keys().hasOnly([
+              'name', 'category', 'address', 'openingHours',
+              'minutesPerCustomer', 'services', 'ownerId',
+              'inviteCode', 'createdAt'
+            ])
+          )
+        );
+
+      allow update: if ownsShop(shopId)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'inviteCode'
+        ])
+        && validInvite(request.resource.data.inviteCode);
+
+      allow delete: if false;
+
+      match /tickets/{ticketId} {
+        allow read: if signedIn();
+
+        allow create: if hasRole('user')
+          && request.resource.data.customerId == request.auth.uid
+          && request.resource.data.status == 'waiting'
+          && request.resource.data.keys().hasOnly([
+            'customerId', 'customerName', 'service',
+            'ticketNumber', 'status', 'createdAt'
+          ]);
+
+        allow update: if (
+          hasRole('user')
+          && resource.data.customerId == request.auth.uid
+          && resource.data.status == 'waiting'
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status'
+          ])
+        ) || (
+          managesShop(shopId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status'
+          ])
+          && (
+            (
+              resource.data.status == 'waiting'
+              && request.resource.data.status == 'serving'
+            )
+            || (
+              resource.data.status == 'serving'
+              && request.resource.data.status in ['completed', 'skipped']
+            )
+          )
+        );
+
+        allow delete: if false;
+      }
+    }
+
+    match /invites/{inviteCode} {
+      allow read: if signedIn();
+
+      allow create: if hasRole('owner')
+        && validInvite(inviteCode)
+        && request.resource.data.code == inviteCode
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.active == true
+        && exists(shopPath(request.resource.data.shopId))
+        && get(shopPath(request.resource.data.shopId)).data.ownerId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'code', 'shopId', 'ownerId', 'active', 'createdAt'
+        ]);
+
+      allow update: if hasRole('owner')
+        && resource.data.ownerId == request.auth.uid
+        && ownsShop(resource.data.shopId)
+        && request.resource.data.active == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'active'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}
