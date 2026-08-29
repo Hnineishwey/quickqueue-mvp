@@ -42,6 +42,9 @@ Customers discover shops by category, open a shop, select a service, and join it
 → **Customer joins Queue**  
 → **Staff manages Queue**
 
+## Adm account to check-Email: staff@quickqueue.demo Password: QuickQueue123!
+
+
 ## Technology Stack
 
 - HTML5
